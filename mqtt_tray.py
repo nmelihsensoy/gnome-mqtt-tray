@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import os
 import getopt
 import paho.mqtt.client as mqtt
 ##Indicator
@@ -15,14 +16,29 @@ from threading import Thread, Lock
 from gi.repository import GObject
 gi.require_version('Notify', '0.7')
 from gi.repository import Notify
+import configparser
+import json
 
-APP_NAME = 'mqtt-appindicator'
+##Json Config
+with open('menu_entries.json', 'r') as f:
+    menuEntries = json.load(f)
+
+with open('notification_entries.json', 'r') as f:
+    notificationEntries = json.load(f)
+
+##Ini Config
+config = configparser.ConfigParser()
+config.read('CONFIG.INI')
+
+##App Name
+APP_NAME = config['DEFAULT']['AppName']
 
 class Indicator():
     def __init__(self):
         self.app = APP_NAME
-        defaultIcon = "yd-ind-idle"
-
+        defaultIcon = os.path.abspath('icons/baseline-cloud_queue-24px.svg')
+        ##defaultIcon = config['DEFAULT']['DefaultIcon']
+        print(defaultIcon)
 
         self.testindicator = AppIndicator3.Indicator.new(
             self.app, defaultIcon,
@@ -30,7 +46,7 @@ class Indicator():
         self.testindicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)       
         self.testindicator.set_menu(self.create_menu())
 
-        self.mqttc = MyMQTTClass("Python Client")
+        self.mqttc = MyMQTTClass(config['mqtt']['mqtt_client_name'])
 
     def main(self):
         self.mqttc.start()
@@ -41,10 +57,7 @@ class Indicator():
         
         item_quit = Gtk.MenuItem('Quit')
         item_quit.connect('activate', self.stop)
-       
-        kapiButton = Gtk.MenuItem('Kapıyı Aç')
-        kapiButton.connect('activate', self.kapiAc)
-        
+
         ##item_purple = Gtk.MenuItem('Purple')
         ##item_purple.connect('activate', self.purple)
         
@@ -54,8 +67,11 @@ class Indicator():
         self.status = Gtk.MenuItem('')
         #status.show()
 
-        self.menu.append(kapiButton)
-        ##self.menu.append(item_purple)
+        for entry in menuEntries:
+            menuItemDynamic = Gtk.MenuItem(entry['showName'])
+            menuItemDynamic.connect('activate', self.buttonConnector, entry['publishChannelName'], entry['publishMessage'])
+            self.menu.append(menuItemDynamic)
+
         self.menu.append(separator)
         self.menu.append(self.status)
         self.menu.append(item_quit)
@@ -71,9 +87,12 @@ class Indicator():
     
     def update_status(self, msg):
         self.status.get_child().set_text(msg)
+    
+    def buttonConnector(self, *data):
+        self.mqttc.publishTopic(data[1], data[2])
 
-    def kapiAc(self, source):
-        self.mqttc.publishTopic("/melih/deneme", "ON")
+    def kapiAc(self, source, testId):
+        self.mqttc.publishTopic("/melih/deneme", testId)
 
 class MyMQTTClass(threading.Thread):
     def __init__(self, clientid=None):
@@ -93,7 +112,7 @@ class MyMQTTClass(threading.Thread):
 
     def mqtt_on_disconnect(self, mqttc, userdata, rc):
         # define what happens after disconnect
-        show_notify("test")
+        show_notify("uyarı", "test")
 
     #def mqtt_on_connect(self, mqttc, obj, flags, rc):
        # print("rc: "+str(rc))
@@ -101,8 +120,10 @@ class MyMQTTClass(threading.Thread):
     def mqtt_on_connect(self, mqttc, obj, flags, rc):
         if rc == 0:
             msg = 'Connected.'
-            self._mqttc.subscribe("/melih/deneme", 0)
-            self._mqttc.subscribe("/melih/led", 0)
+            
+            for entry in notificationEntries:
+                self._mqttc.subscribe(entry['subscribeChannel'], 0)
+
             set_icon("yd-ind-error")
         else:
             msg = 'Connection unsuccessful.'
@@ -110,10 +131,15 @@ class MyMQTTClass(threading.Thread):
 
     def mqtt_on_message(self, mqttc, obj, msg):
         print(msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
-        show_notify(("Konu: "+msg.topic+" Mesaj: "+str(msg.payload, "utf-8")), True)
+
+        for entry in notificationEntries:
+                if(entry['subscribeChannel'] == msg.topic and entry['notificationEnable']):
+                    show_notify(entry['notificationTitle'], ("Konu: "+msg.topic+" Mesaj: "+str(msg.payload, "utf-8")), True)
+
+        
 
     def mqtt_on_publish(self, mqttc, obj, mid):
-        print("mid: "+str(mid))
+        print("Published: : "+str(mid))
     def mqtt_on_subscribe(self, mqttc, obj, mid, granted_qos):
         print("Subscribed: "+str(mid)+" "+str(granted_qos))
     def mqtt_on_log(self, mqttc, obj, level, string):
@@ -123,7 +149,7 @@ class MyMQTTClass(threading.Thread):
         # try to connect
         try:
             update_status("Connecting...")
-            self._mqttc.connect_async("iotmelih.duckdns.org", 1883, 60)
+            self._mqttc.connect_async(config['mqtt']['broker_host_name'], config.getint('mqtt', 'broker_host_port'), 60)
             # keep connected to broker
             self._mqttc.loop_forever()
         except getopt.GetoptError as e:
@@ -137,11 +163,11 @@ def set_icon(icon):
     #GObject.idle_add(ind.update_status, msg)
     ind.set_icon(icon)
 
-def show_notify(msg, beeps=False):
+def show_notify(title, msg, beeps=False):
     if beeps is True:
         beep()
         
-    bildiriMesaj=Notify.Notification.new("Mqtt Notification", msg, "yd-ind-idle")
+    bildiriMesaj=Notify.Notification.new(title, msg, "yd-ind-idle")
     bildiriMesaj.show()
     
 def beep():

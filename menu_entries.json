@@ -1,0 +1,20 @@
+[
+  {
+    "showName": "Turn On Lamp",
+    "publishChannelName": "/melih/room/lamp",
+    "publishMessage" : "ON",
+    "qos_level": 0
+  },
+  {
+    "showName": "Open The Door",
+    "publishChannelName": "/melih/home/door",
+    "publishMessage" : "ON",
+    "qos_level": 0
+  },
+  {
+    "showName": "Notification Test",
+    "publishChannelName": "/melih/deneme",
+    "publishMessage" : "Test Notification!",
+    "qos_level": 0
+  }
+]

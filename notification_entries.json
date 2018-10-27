@@ -1,0 +1,17 @@
+[
+  {
+    "subscribeChannel": "/melih/deneme",
+    "notificationEnable": true, 
+    "notificationTitle": "Deneme",
+    "notificationBody": "deneme message",
+    "triggerOnCustomMessage" : false
+  },
+  {
+    "subscribeChannel": "/melih/test",
+    "notificationEnable": true, 
+    "notificationTitle": "Turn On Lamp",
+    "notificationBody": "Test",
+    "triggerOnCustomMessage" : true,
+    "triggerMessage": "ON"
+  }
+]
