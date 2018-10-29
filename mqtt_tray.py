@@ -5,7 +5,6 @@ import sys
 import os
 import getopt
 import paho.mqtt.client as mqtt
-##Indicator
 import signal
 import gi
 gi.require_version('Gtk', '3.0')
@@ -30,18 +29,18 @@ with open('notification_entries.json', 'r') as f:
 config = configparser.ConfigParser()
 config.read('CONFIG.INI')
 
-##App Name
+##App Config
 APP_NAME = config['DEFAULT']['AppName']
+pathOfApp = os.path.dirname(os.path.realpath(__file__)) + '/'
+iconsPath = pathOfApp + config['DEFAULT']['IconsFolder'] + '/'
+defaultIcon = iconsPath + config['DEFAULT']['DefaultIcon']
 
 class Indicator():
     def __init__(self):
         self.app = APP_NAME
-        defaultIcon = os.path.abspath('icons/baseline-cloud_queue-24px.svg')
-        ##defaultIcon = config['DEFAULT']['DefaultIcon']
-        print(defaultIcon)
 
         self.testindicator = AppIndicator3.Indicator.new(
-            self.app, defaultIcon,
+            self.app, defaultIcon ,
             AppIndicator3.IndicatorCategory.OTHER)
         self.testindicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)       
         self.testindicator.set_menu(self.create_menu())
@@ -57,9 +56,6 @@ class Indicator():
         
         item_quit = Gtk.MenuItem('Quit')
         item_quit.connect('activate', self.stop)
-
-        ##item_purple = Gtk.MenuItem('Purple')
-        ##item_purple.connect('activate', self.purple)
         
         separator = Gtk.SeparatorMenuItem()
         separator.show()
@@ -81,18 +77,15 @@ class Indicator():
     def stop(self, source):
         self.mqttc.killConnection()
         Gtk.main_quit()
-        
-    def set_icon(self, icon):
-        self.testindicator.set_icon(icon)
-    
+
+    def update_icon(self, icon):
+        self.testindicator.set_icon(iconsPath + icon)
+
     def update_status(self, msg):
         self.status.get_child().set_text(msg)
     
     def buttonConnector(self, *data):
         self.mqttc.publishTopic(data[1], data[2])
-
-    def kapiAc(self, source, testId):
-        self.mqttc.publishTopic("/melih/deneme", testId)
 
 class MyMQTTClass(threading.Thread):
     def __init__(self, clientid=None):
@@ -112,10 +105,8 @@ class MyMQTTClass(threading.Thread):
 
     def mqtt_on_disconnect(self, mqttc, userdata, rc):
         # define what happens after disconnect
+        ind.update_icon(config['DEFAULT']['OfflineIcon'])
         show_notify("uyarı", "test")
-
-    #def mqtt_on_connect(self, mqttc, obj, flags, rc):
-       # print("rc: "+str(rc))
 
     def mqtt_on_connect(self, mqttc, obj, flags, rc):
         if rc == 0:
@@ -124,9 +115,10 @@ class MyMQTTClass(threading.Thread):
             for entry in notificationEntries:
                 self._mqttc.subscribe(entry['subscribeChannel'], 0)
 
-            set_icon("yd-ind-error")
+            ind.update_icon(config['DEFAULT']['OnlineIcon'])
         else:
             msg = 'Connection unsuccessful.'
+            ind.update_icon(config['DEFAULT']['OfflineIcon'])
         update_status(msg)
 
     def mqtt_on_message(self, mqttc, obj, msg):
@@ -134,7 +126,7 @@ class MyMQTTClass(threading.Thread):
 
         for entry in notificationEntries:
                 if(entry['subscribeChannel'] == msg.topic and entry['notificationEnable']):
-                    show_notify(entry['notificationTitle'], ("Konu: "+msg.topic+" Mesaj: "+str(msg.payload, "utf-8")), True)
+                    show_notify(entry['notificationTitle'], (" Message: "+str(msg.payload, "utf-8")), True)
 
         
 
@@ -156,18 +148,13 @@ class MyMQTTClass(threading.Thread):
             update_status("Error")
 
 def update_status(msg):
-    #GObject.idle_add(ind.update_status, msg)
     ind.update_status(msg)
-
-def set_icon(icon):
-    #GObject.idle_add(ind.update_status, msg)
-    ind.set_icon(icon)
 
 def show_notify(title, msg, beeps=False):
     if beeps is True:
         beep()
         
-    bildiriMesaj=Notify.Notification.new(title, msg, "yd-ind-idle")
+    bildiriMesaj=Notify.Notification.new(title, msg, defaultIcon)
     bildiriMesaj.show()
     
 def beep():
