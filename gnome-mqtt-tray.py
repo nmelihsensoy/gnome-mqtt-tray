@@ -19,10 +19,10 @@ import configparser
 import json
 
 ##Json Config
-with open('menu_entries.json', 'r') as f:
+with open('~/.config/gnome-mqtt-tray-config/menu_entries.json', 'r') as f:
     menuEntries = json.load(f)
 
-with open('notification_entries.json', 'r') as f:
+with open('~/.config/gnome-mqtt-tray-config/notification_entries.json', 'r') as f:
     notificationEntries = json.load(f)
 
 ##Ini Config
@@ -32,7 +32,8 @@ config.read('CONFIG.INI')
 ##App Config
 APP_NAME = config['DEFAULT']['AppName']
 pathOfApp = os.path.dirname(os.path.realpath(__file__)) + '/'
-iconsPath = pathOfApp + config['DEFAULT']['IconsFolder'] + '/'
+pathOfConfig = config['DEFAULT']['ConfigPath'] + '/'
+iconsPath = pathOfConfig + config['DEFAULT']['IconsFolder'] + '/'
 defaultIcon = iconsPath + config['DEFAULT']['DefaultIcon']
 
 class Indicator():

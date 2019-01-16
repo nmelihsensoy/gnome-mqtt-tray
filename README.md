@@ -7,7 +7,7 @@ git clone https://github.com/nmelihsensoy/gnome-mqtt-tray.git
 cd gnome-mqtt-tray
 pip3 install paho-mqtt
 
-python3 mqtt_tray.py
+./install.sh
 ```
 
 ## Credits
