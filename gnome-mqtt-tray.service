@@ -3,7 +3,7 @@ Description=Gnome Mqtt Tray Service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/mqtt_tray.py
+ExecStart=/usr/bin/gnome-mqtt-tray.py
 
 [Install]
 WantedBy=multi-user.target
